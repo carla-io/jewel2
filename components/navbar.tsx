@@ -252,12 +252,12 @@ export function Sidebar() {
             </>
           ) : (
             <>
-              <SidebarItem 
+              {/* <SidebarItem 
                 icon="diamond-outline" 
                 label="Collections" 
                 onPress={() => navigateTo("/pages/Collections", "collections")} 
                 name="collections"
-              />
+              /> */}
               
               <SidebarItem 
                 icon="heart-outline" 
@@ -282,12 +282,12 @@ export function Sidebar() {
             name="profile"
           />
           
-          <SidebarItem 
+          {/* <SidebarItem 
             icon="settings-outline" 
             label="Settings" 
             onPress={() => navigateTo("/pages/Settings", "settings")} 
             name="settings"
-          />
+          /> */}
         </View>
         
         {/* <View style={styles.sidebarFooter}>
