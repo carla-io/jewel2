@@ -60,8 +60,8 @@ const OrdersScreen = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Processing": return "#FF92A5";
-      case "Shipped": return "#5E9EFF";
-      case "Delivered": return "#7ED957";
+      case "Approved": return "#5E9EFF";
+      case "Canceled": return "#7ED957";
       default: return "#FF92A5";
     }
   };
@@ -126,7 +126,7 @@ const OrdersScreen = () => {
         
         {/* Order Status Tabs */}
         <View style={styles.tabContainer}>
-          {["Processing", "Shipped", "Delivered"].map((tab) => (
+          {["Processing", "Approved", "Canceled"].map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[styles.tabButton, selectedTab === tab && styles.activeTab]}

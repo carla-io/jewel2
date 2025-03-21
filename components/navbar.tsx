@@ -246,7 +246,7 @@ export function Sidebar() {
               <SidebarItem 
                 icon="clipboard-outline" 
                 label="Orders" 
-                onPress={() => navigateTo("/pages/admin/Orders", "orders")} 
+                onPress={() => navigateTo("/pages/admin/AdminOrders", "orders")} 
                 name="orders"
               />
             </>
