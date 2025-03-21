@@ -37,7 +37,10 @@ export const UserProvider = ({ children }) => {
   }, []);
 
   // ✅ New Function: Get unique cart key for the logged-in user
-  const getCartKey = () => (user ? `cart_${user.id}` : "cart_guest");
+  const getCartKey = () => {
+    return user && (user._id || user.id) ? `cart_${user._id || user.id}` : "cart_guest";
+  };
+  
 
   return (
     <UserContext.Provider value={{ user, setUser, getCartKey }}>

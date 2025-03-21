@@ -10,12 +10,14 @@ export const fetchUserOrders = createAsyncThunk(
   async (userId, { rejectWithValue }) => {
     try {
       const response = await axios.get(`${API_URL}/get/${userId}`);
-      return response.data.orders; // Ensure this matches backend response structure
+      console.log("Fetched Orders Response:", JSON.stringify(response.data, null, 2)); // Debug response
+      return response.data.orders;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
+
 
 // 🔹 Fetch All Orders (GET)
 export const fetchOrders = createAsyncThunk("order/fetchOrders", async (_, { rejectWithValue }) => {

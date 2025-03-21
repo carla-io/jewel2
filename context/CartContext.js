@@ -1,19 +1,19 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { UserContext } from "./UserContext"; // Import UserContext
+import { UserContext } from "./UserContext";
 
 export const CartContext = createContext(null);
 
 export const CartProvider = ({ children }) => {
-  const { user } = useContext(UserContext); // Get current user
+  const { user } = useContext(UserContext);
   const [cart, setCart] = useState([]);
 
-  // Generate a unique cart key based on user ID
+  // Get cart key based on the logged-in user
   const getCartKey = () => {
     return user && (user._id || user.id) ? `cart_${user._id || user.id}` : "cart_guest";
   };
 
-  // Load cart from AsyncStorage
+  // Load cart from AsyncStorage for the current user
   const loadCart = async () => {
     try {
       const cartKey = getCartKey();
@@ -24,7 +24,7 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  // Save cart to AsyncStorage
+  // Save cart to AsyncStorage for the current user
   const saveCart = async (updatedCart) => {
     try {
       const cartKey = getCartKey();
@@ -34,47 +34,58 @@ export const CartProvider = ({ children }) => {
     }
   };
 
+  // Clear cart for the current user
   const clearCart = async () => {
     try {
       const cartKey = getCartKey();
-      await AsyncStorage.removeItem(cartKey); // Clear AsyncStorage cart
-      setCart([]); // Clear cart state
+      await AsyncStorage.removeItem(cartKey);
+      setCart([]); // Clear current cart in state
     } catch (error) {
       console.error("Error clearing cart:", error);
     }
   };
 
-  // Load cart when user logs in
+  // Sync cart with AsyncStorage whenever user changes
   useEffect(() => {
-    if (!user) {
-      console.warn("User not found. Please log in again.");
-    } else {
-      loadCart();
-    }
+    const syncCart = async () => {
+      if (user) {
+        // If a user is logged in, load their cart
+        await loadCart();
+      } else {
+        // If no user is logged in, clear the cart
+        setCart([]);
+      }
+    };
+
+    syncCart();
   }, [user]);
 
-  // Save cart when cart state changes
+  // Save cart to AsyncStorage whenever it changes
   useEffect(() => {
-    saveCart(cart);
+    if (user) {
+      saveCart(cart);
+    }
   }, [cart]);
 
-  // Add item to cart
+  // Add an item to the cart
   const addToCart = (item) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
-      return existingItem
-        ? prevCart.map((cartItem) =>
-            cartItem.id === item.id
-              ? { ...cartItem, quantity: cartItem.quantity + 1 }
-              : cartItem
-          )
-        : [...prevCart, { ...item, quantity: 1 }];
+      if (existingItem) {
+        return prevCart.map((cartItem) =>
+          cartItem.id === item.id
+            ? { ...cartItem, quantity: cartItem.quantity + 1 }
+            : cartItem
+        );
+      } else {
+        return [...prevCart, { ...item, quantity: 1 }];
+      }
     });
   };
 
-  // Decrease quantity or remove item
+  // Decrease item quantity in the cart
   const decreaseQuantity = (itemId) => {
-    setCart((prevCart) => 
+    setCart((prevCart) =>
       prevCart
         .map((cartItem) =>
           cartItem.id === itemId
@@ -85,13 +96,23 @@ export const CartProvider = ({ children }) => {
     );
   };
 
-  // Get total price
+  // Get total price of items in the cart
   const getTotalPrice = () => {
     return cart.reduce((total, item) => total + item.price * item.quantity, 0);
   };
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, decreaseQuantity, getTotalPrice, clearCart, saveCart, loadCart,  }}>
+    <CartContext.Provider
+      value={{
+        cart,
+        addToCart,
+        decreaseQuantity,
+        getTotalPrice,
+        clearCart,
+        loadCart,
+        setCart,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );
