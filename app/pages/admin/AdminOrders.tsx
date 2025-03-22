@@ -4,6 +4,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchOrders } from "../../redux/slices/orderSlice";
 import axios from "axios";
 import { RootState, AppDispatch } from "../../redux/store";
+import * as Notifications from 'expo-notifications';
+import * as Permissions from 'expo-permissions';
+import Constants from 'expo-constants';
 
 const API_URL = "http://192.168.100.171:4000/api/order";
 
@@ -14,18 +17,49 @@ const AdminOrdersScreen = () => {
 
   useEffect(() => {
     dispatch(fetchOrders());
+    // registerForPushNotificationsAsync();
   }, [dispatch]);
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       setUpdatingOrderId(orderId);
-      await axios.put(`${API_URL}/${orderId}/status`, { status: newStatus }); // ✅ Correct key
+      // const expoPushToken = await registerForPushNotificationsAsync(); // Get push token
+
+      await axios.put(`${API_URL}/${orderId}/status`, { 
+          status: newStatus,
+          // expoPushToken // Send push token
+      });
+
       dispatch(fetchOrders()); // Refresh orders after update
     } catch (error) {
       console.error("Failed to update order status:", error.response?.data || error.message);
     } finally {
       setUpdatingOrderId(null);
     }
+
+
+    
+};
+
+const registerForPushNotificationsAsync = async () => {
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status !== "granted") {
+    const { status: newStatus } = await Notifications.requestPermissionsAsync();
+    if (newStatus !== "granted") {
+      alert("No notification permissions!");
+      return;
+    }
+  }
+
+  // Make sure to pass the projectId manually
+  const token = (
+    await Notifications.getExpoPushTokenAsync({
+      projectId: Constants.expoConfig?.extra?.eas?.projectId,
+    })
+  ).data;
+
+  console.log("Expo Push Token:", token);
+  return token;
 };
 
 

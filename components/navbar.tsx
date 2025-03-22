@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { UserContext } from "../context/UserContext";
 import { CartContext } from "../context/CartContext";
 
+
 // Create a context to manage the sidebar state globally
 export const SidebarContext = React.createContext({
   isOpen: false,
@@ -40,6 +41,7 @@ export function TopNavbar() {
   const router = useRouter();
   const { cart } = useContext(CartContext);
   const { toggleSidebar } = useContext(SidebarContext);
+  const [searchQuery, setSearchQuery] = useState("");
   
   const navigateTo = (path) => {
     if (router?.push) {
@@ -47,6 +49,11 @@ export function TopNavbar() {
     } else {
       console.warn("Navigation attempted before the router was ready");
     }
+  };
+
+  const handleSearch = () => {
+    // Navigate to the product list page with the search query
+    router.push("/pages/SearchScreen", { search: searchQuery });
   };
   
   return (
@@ -62,7 +69,13 @@ export function TopNavbar() {
       
       <View style={styles.searchContainer}>
         <Ionicons name="search-outline" size={18} color="#888" style={styles.searchIcon} />
-        <TextInput style={styles.searchInput} placeholder="Search..." placeholderTextColor="#aaa" />
+        <TextInput
+  style={styles.searchInput}
+  placeholder="Search..."
+  placeholderTextColor="#aaa"
+  value={searchQuery}
+  onChangeText={handleSearch}  // Call handleSearch on every keystroke
+/>
       </View>
       
       <TouchableOpacity style={styles.cartContainer} onPress={() => navigateTo("/pages/Cart")}>
