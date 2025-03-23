@@ -17,6 +17,7 @@ import { CartContext } from "../context/CartContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
+import { useRouter } from "expo-router";
 
 const { width } = Dimensions.get("window");
 const cardWidth = (width / 2) - 20;
@@ -27,6 +28,8 @@ export default function Index() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [addedToCartItems, setAddedToCartItems] = useState({});
+  const router = useRouter();
+ 
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -73,6 +76,8 @@ export default function Index() {
 
     fetchProducts();
   }, []);
+
+  
 
   const handleAddToCart = (item) => {
     addToCart({ ...item, id: item._id || item.id });
@@ -240,6 +245,7 @@ export default function Index() {
                   <TouchableOpacity 
                     style={styles.productCard}
                     activeOpacity={0.9}
+                    onPress={() => router.push(`/pages/ProductDetails?productId=${item._id}`)}
                   >
                     <View style={styles.imageContainer}>
                       <ScrollView 
