@@ -424,7 +424,8 @@ export default function ProductDetails() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff'
+    backgroundColor: '#fff',
+    marginTop: -20
   },
   loadingContainer: {
     flex: 1,
