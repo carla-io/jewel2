@@ -28,14 +28,15 @@ export default function SignUpScreen() {
 
   useEffect(() => {
     const requestPermissions = async () => {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        alert("Camera roll permissions are required!");
+      const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+      const { status: galleryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  
+      if (cameraStatus !== "granted" || galleryStatus !== "granted") {
+        Alert.alert("Permission Required", "Camera and gallery access are needed to upload a profile picture.");
       }
     };
+  
     requestPermissions();
-
-    // Check if user is already logged in
     checkLoggedInUser();
   }, []);
 
@@ -56,14 +57,42 @@ export default function SignUpScreen() {
   };
 
   const handlePickImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1,
-      });
+    Alert.alert(
+      "Upload Profile Picture",
+      "Choose an option:",
+      [
+        {
+          text: "Take a Photo",
+          onPress: async () => await pickImage(true), // Use Camera
+        },
+        {
+          text: "Choose from Gallery",
+          onPress: async () => await pickImage(false), // Use Gallery
+        },
+        { text: "Cancel", style: "cancel" },
+      ]
+    );
+  };
 
+  const pickImage = async (useCamera) => {
+    try {
+      let result;
+  
+      if (useCamera) {
+        result = await ImagePicker.launchCameraAsync({
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 1,
+        });
+      } else {
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 1,
+        });
+      }
+  
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setProfileImage(result.assets[0].uri);
       } else {
@@ -75,59 +104,77 @@ export default function SignUpScreen() {
   };
 
   const handleSubmit = async () => {
-    console.log("Sending data:", user.email, user.password); // Debugging
-  
+    console.log("Sending data:", user.email, user.password);
+
     try {
-      const url = isRegistering
-        ? "http://192.168.100.171:4000/api/auth/register"
-        : "http://192.168.100.171:4000/api/auth/login";
-  
-      let requestData;
-  
-      if (isRegistering) {
-        const formData = new FormData();
-        formData.append("username", user.username);
-        formData.append("email", user.email);
-        formData.append("password", user.password);
-  
-        if (profileImage) {
-          formData.append("profilePicture", {
-            uri: profileImage,
-            name: "profile.jpg",
-            type: "image/jpeg",
-          });
-        }
-  
-        requestData = formData;
-      } else {
-        requestData = { email: user.email, password: user.password };
-      }
-  
-      const response = await axios.post(url, requestData, {
-        headers: {
-          "Content-Type": isRegistering ? "multipart/form-data" : "application/json",
-        },
-      });
-  
-      console.log("Response:", response.data);
-  
-      await AsyncStorage.setItem("user", JSON.stringify(response.data.user));
-      await AsyncStorage.setItem("token", response.data.token);
-  
-      Alert.alert("Success", isRegistering ? "Registration successful!" : "Login successful!");
-  
-      if (!isRegistering) {
-        if (response.data.user.role === "admin") {
-          router.replace("/pages/admin/AdminDashboard");
+        const url = isRegistering
+            ? "http://192.168.100.171:4000/api/auth/register"
+            : "http://192.168.100.171:4000/api/auth/login";
+
+        let requestData;
+        let headers = { Accept: "application/json" }; // Default headers
+
+        if (isRegistering) {
+            if (!user.username || !user.email || !user.password) {
+                Alert.alert("Error", "All fields are required!");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("username", user.username);
+            formData.append("email", user.email.toLowerCase()); // Match backend
+            formData.append("password", user.password);
+
+            if (profileImage) {
+                formData.append("profilePicture", {
+                    uri: profileImage,
+                    name: "profile.jpg",
+                    type: "image/jpeg",
+                });
+            } else {
+                console.log("No image selected");
+            }
+
+            // Debugging: Log formData
+            for (let pair of formData.entries()) {
+                console.log(pair[0], pair[1]);
+            }
+
+            requestData = formData;
+            headers["Content-Type"] = "multipart/form-data";
         } else {
-          router.replace("/pages/UserProfile");
+            if (!user.email || !user.password) {
+                Alert.alert("Error", "Email and password are required!");
+                return;
+            }
+
+            requestData = { email: user.email.toLowerCase(), password: user.password };
+            headers["Content-Type"] = "application/json";
         }
-      }
+
+        const response = await axios.post(url, requestData, { headers });
+
+        console.log("Response:", response.data);
+
+        await AsyncStorage.setItem("user", JSON.stringify(response.data.user));
+        await AsyncStorage.setItem("token", response.data.token);
+
+        Alert.alert("Success", isRegistering ? "Registration successful!" : "Login successful!");
+
+        if (!isRegistering) {
+            if (response.data.user.role === "admin") {
+                router.push("/pages/admin/AdminDashboard"); // Replace with correct screen name
+            } else {
+                router.push("/pages/UserProfile"); // Replace with correct screen name
+            }
+        }
     } catch (error) {
-      console.error("Error:", error.response?.data);
-      setError(error.response?.data?.message || "Something went wrong");
+        console.error("Error:", error.response?.data);
+        setError(error.response?.data?.message || "Something went wrong");
     }
-  };
+};
+
+
 
   const togglePasswordVisibility = () => {
     setIsPasswordVisible(!isPasswordVisible);
@@ -163,6 +210,7 @@ export default function SignUpScreen() {
 
             {isRegistering && (
               <>
+
 
 <TouchableOpacity style={styles.imagePicker} onPress={handlePickImage}>
                   {profileImage ? (
