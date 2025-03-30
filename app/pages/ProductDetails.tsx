@@ -17,7 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { CartContext } from "../../context/CartContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import axios from "axios";
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 const { width, height } = Dimensions.get("window");
 
 export default function ProductDetails() {
@@ -36,19 +36,16 @@ export default function ProductDetails() {
   const [favorite, setFavorite] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [addedToCartItems, setAddedToCartItems] = useState({});
+  const [reviews, setReviews] = useState([]);
+const [userReview, setUserReview] = useState(null);
+const [reviewsLoading, setReviewsLoading] = useState(true);
+const [userId, setUserId] = useState(null);
   
   // Animation values
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
 
-  // Similar products (would be populated from API in real implementation)
-  const similarProducts = [
-    { id: 1, name: "Pearl Necklace", price: 5500, image: "https://example.com/pearl-necklace.jpg", category: "Necklaces" },
-    { id: 2, name: "Silver Earrings", price: 2800, image: "https://example.com/silver-earrings.jpg", category: "Earrings" },
-    { id: 3, name: "Gold Bracelet", price: 6200, image: "https://example.com/gold-bracelet.jpg", category: "Bracelets" },
-    { id: 4, name: "Diamond Ring", price: 12000, image: "https://example.com/diamond-ring.jpg", category: "Rings" }
-  ];
 
   // Fetch product details from API
   useEffect(() => {
@@ -65,7 +62,7 @@ export default function ProductDetails() {
         }
         
         // Make the API request with the correct URL format
-        const response = await axios.get(`http://192.168.100.171:4000/api/product/${productId}`);
+        const response = await axios.get(`http://192.168.62.237:4000/api/product/${productId}`);
         
         if (response.data.success) {
           setProduct(response.data.product);
@@ -85,6 +82,68 @@ export default function ProductDetails() {
   
     fetchProductDetails();
   }, [productId]);
+
+  useEffect(() => {
+    const getUserData = async () => {
+      try {
+        // Try to get from AsyncStorage first
+        const userData = await AsyncStorage.getItem("user");
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          setUserId(parsedUser._id);
+          return;
+        }
+        
+        // If not in AsyncStorage, fetch from API
+        const token = await AsyncStorage.getItem("token");
+        if (!token) return;
+        
+        const response = await axios.post(
+          "http://192.168.62.237:4000/api/auth/user",
+          { token }
+        );
+        
+        setUserId(response.data.user._id);
+      } catch (err) {
+        console.error("Failed to get user data:", err);
+      }
+    };
+    
+    getUserData();
+  }, []);
+
+  
+    useEffect(() => {
+      const fetchReviews = async () => {
+        if (!productId) return;
+        
+        try {
+          setReviewsLoading(true);
+          // Fetch all product reviews
+          const allReviewsResponse = await axios.get(`http://192.168.62.237:4000/api/reviews/${productId}`);
+          
+          if (allReviewsResponse.data.success) {
+            setReviews(allReviewsResponse.data.reviews);
+          }
+          
+          // Fetch the current user's review if userId is available
+          if (userId) {
+            const userReviewResponse = await axios.get(`http://192.168.62.237:4000/api/reviews/getSingle/${productId}/${userId}`);
+            if (userReviewResponse.data.success && userReviewResponse.data.review) {
+              setUserReview(userReviewResponse.data.review);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching reviews:", error);
+        } finally {
+          setReviewsLoading(false);
+        }
+      };
+    
+      if (!loading && product && userId) {
+        fetchReviews();
+      }
+    }, [productId, loading, product, userId]);
 
   // Animate entry
   useEffect(() => {
@@ -350,28 +409,104 @@ export default function ProductDetails() {
             </View>
           </View>
           
-          {/* You May Also Like Section */}
-          <View style={styles.similarProductsContainer}>
-            <Text style={styles.sectionTitle}>You May Also Like</Text>
-            <FlatList
-              data={similarProducts}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={styles.similarProductCard}>
-                  <Image
-                    source={{ uri: item.image }} // Use the direct image prop from our static data
-                    style={styles.similarProductImage}
-                    resizeMode="cover"
-                    defaultSource={require('../../assets/images/adaptive-icon.png')} // Add a default image in your assets
+          {/* Reviews Section */}
+<View style={styles.reviewsContainer}>
+  <Text style={styles.sectionTitle}>Reviews</Text>
+  
+  {reviewsLoading ? (
+    <ActivityIndicator size="small" color="#e55c6c" />
+  ) : reviews.length > 0 ? (
+    <>
+      {/* Display user's own review if it exists */}
+      {userReview && (
+        <View style={styles.userReviewContainer}>
+          <Text style={styles.userReviewLabel}>Your Review</Text>
+          <View style={styles.reviewItem}>
+            <View style={styles.reviewHeader}>
+              <View style={styles.reviewerInfo}>
+                <Image
+                  source={{ uri: userReview.userImage || 'https://via.placeholder.com/40' }}
+                  style={styles.reviewerImage}
+                />
+                <View>
+                  <Text style={styles.reviewerName}>You</Text>
+                  <Text style={styles.reviewDate}>
+                    {new Date(userReview.createdAt).toLocaleDateString()}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.stars}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Ionicons
+                    key={star}
+                    name={star <= userReview.rating ? "star" : "star-outline"}
+                    size={14}
+                    color="#FFD700"
                   />
-                  <Text style={styles.similarProductName} numberOfLines={1}>{item.name}</Text>
-                  <Text style={styles.similarProductPrice}>₱{Number(item.price).toLocaleString()}</Text>
-                </TouchableOpacity>
-              )}
-            />
+                ))}
+              </View>
+            </View>
+            <Text style={styles.reviewText}>{userReview.comment}</Text>
           </View>
+        </View>
+      )}
+      
+      {/* Other reviews list - limited to 3 for space */}
+      {reviews.slice(0, 3).map((review) => (
+        <View key={review._id} style={styles.reviewItem}>
+          <View style={styles.reviewHeader}>
+            <View style={styles.reviewerInfo}>
+              <Image
+                source={{ uri: review.userImage || 'https://via.placeholder.com/40' }}
+                style={styles.reviewerImage}
+              />
+              <View>
+                <Text style={styles.reviewerName}>{review.userName}</Text>
+                <Text style={styles.reviewDate}>
+                  {new Date(review.createdAt).toLocaleDateString()}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.stars}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Ionicons
+                  key={star}
+                  name={star <= review.rating ? "star" : "star-outline"}
+                  size={14}
+                  color="#FFD700"
+                />
+              ))}
+            </View>
+          </View>
+          <Text style={styles.reviewText}>{review.comment}</Text>
+        </View>
+      ))}
+      
+      {/* View all reviews button */}
+      {reviews.length > 3 && (
+        <TouchableOpacity 
+          style={styles.viewAllButton}
+          onPress={() => navigation.navigate('AllReviews', { productId, productName: product.name })}
+        >
+          <Text style={styles.viewAllText}>View all {reviews.length} reviews</Text>
+          <Ionicons name="chevron-forward" size={16} color="#e55c6c" />
+        </TouchableOpacity>
+      )}
+    </>
+  ) : (
+    <View style={styles.noReviewsContainer}>
+      <Ionicons name="chatbubble-ellipses-outline" size={40} color="#ccc" />
+      <Text style={styles.noReviewsText}>No reviews yet</Text>
+      <TouchableOpacity 
+        style={styles.writeReviewButton}
+        onPress={() => navigation.navigate('WriteReview', { productId, productName: product.name })}
+      >
+        <Text style={styles.writeReviewText}>Write the first review</Text>
+      </TouchableOpacity>
+    </View>
+  )}
+</View>
+         
         </View>
       </ScrollView>
       
@@ -716,5 +851,94 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8
-  }
+  },
+  // Add these to your styles object
+reviewsContainer: {
+  marginTop: 20,
+  paddingBottom: 20,
+},
+reviewItem: {
+  backgroundColor: '#f8f8f8',
+  borderRadius: 12,
+  padding: 16,
+  marginVertical: 8,
+},
+reviewHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 8,
+},
+reviewerInfo: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+reviewerImage: {
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  marginRight: 10,
+},
+reviewerName: {
+  fontWeight: '600',
+  fontSize: 14,
+  color: '#333',
+},
+reviewDate: {
+  fontSize: 12,
+  color: '#888',
+  marginTop: 2,
+},
+reviewText: {
+  fontSize: 14,
+  lineHeight: 20,
+  color: '#444',
+  marginTop: 6,
+},
+userReviewContainer: {
+  marginBottom: 16,
+},
+userReviewLabel: {
+  fontSize: 15,
+  fontWeight: '600',
+  marginBottom: 6,
+  color: '#555',
+},
+noReviewsContainer: {
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: 30,
+},
+noReviewsText: {
+  marginTop: 10,
+  fontSize: 16,
+  color: '#888',
+},
+writeReviewButton: {
+  marginTop: 16,
+  paddingVertical: 10,
+  paddingHorizontal: 20,
+  backgroundColor: '#f8f8f8',
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: '#e55c6c',
+},
+writeReviewText: {
+  color: '#e55c6c',
+  fontWeight: '600',
+  fontSize: 14,
+},
+viewAllButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginTop: 12,
+  paddingVertical: 10,
+},
+viewAllText: {
+  color: '#e55c6c',
+  fontWeight: '600',
+  fontSize: 14,
+  marginRight: 4,
+},
 });

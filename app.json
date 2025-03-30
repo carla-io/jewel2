@@ -4,7 +4,19 @@
     "plugins": [
       "expo-router"
     ],
-    "name": "frontend",
-    "slug": "frontend"
+    "name": "jewel",
+    "slug": "jewel",
+    "android": {
+      "package": "com.cdasal.jewel"
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "98396c5e-1129-4144-8e68-5f120fe03a11"
+      }
+    },
+    "owner": "cdasal"
   }
 }

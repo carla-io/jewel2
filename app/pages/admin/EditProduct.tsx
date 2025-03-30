@@ -30,7 +30,7 @@ const EditProductScreen = () => {
 
   const fetchProduct = async () => {
     try {
-      const response = await axios.get(`http://192.168.100.171:4000/api/product/${productId}`);
+      const response = await axios.get(`http://192.168.62.237:4000/api/product/${productId}`);
       const productData = response.data.product;
 
       console.log("Fetched Product:", productData);
@@ -124,7 +124,7 @@ const captureImage = async () => {
 
     try {
         const response = await axios.put(
-            `http://192.168.100.171:4000/api/product/update/${productId}`,
+            `http://192.168.62.237:4000/api/product/update/${productId}`,
             formData,
             { headers: { "Content-Type": "multipart/form-data", "Accept": "application/json", } }
         );

@@ -12,24 +12,26 @@ import {
   Animated,
   Easing
 } from "react-native";
-import axios from "axios";
 import { CartContext } from "../context/CartContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchProducts } from "./redux/slices/productSlice";
 
 const { width } = Dimensions.get("window");
 const cardWidth = (width / 2) - 20;
 
 export default function Index() {
   const { addToCart } = useContext(CartContext);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [addedToCartItems, setAddedToCartItems] = useState({});
   const router = useRouter();
- 
+  
+  // Redux
+  const dispatch = useDispatch();
+  // Access the correct slice name - "product" not "products"
+  const { products, loading, error } = useSelector((state) => state.product);
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -44,40 +46,28 @@ export default function Index() {
   ];
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await axios.get("http://192.168.100.171:4000/api/product/get");
-        if (response.data.success) {
-          setProducts(response.data.products);
-          
-          // Start entrance animations
-          Animated.parallel([
-            Animated.timing(fadeAnim, {
-              toValue: 1,
-              duration: 600,
-              useNativeDriver: true,
-            }),
-            Animated.timing(scaleAnim, {
-              toValue: 1,
-              duration: 600,
-              easing: Easing.out(Easing.back(1.5)),
-              useNativeDriver: true,
-            })
-          ]).start();
-        } else {
-          setProducts([]);
-        }
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    // Fetch products using Redux thunk
+    dispatch(fetchProducts());
+  }, [dispatch]);
 
-    fetchProducts();
-  }, []);
-
-  
+  useEffect(() => {
+    // Start entrance animations when products are loaded
+    if (products?.length > 0 && !loading) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 600,
+          easing: Easing.out(Easing.back(1.5)),
+          useNativeDriver: true,
+        })
+      ]).start();
+    }
+  }, [products, loading]);
 
   const handleAddToCart = (item) => {
     addToCart({ ...item, id: item._id || item.id });
@@ -129,6 +119,22 @@ export default function Index() {
 
   if (loading) {
     return renderLoading();
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="alert-circle-outline" size={48} color="#e55c6c" />
+        <Text style={styles.errorText}>Something went wrong</Text>
+        <Text style={styles.errorSubtext}>{error}</Text>
+        <TouchableOpacity 
+          style={styles.retryButton}
+          onPress={() => dispatch(fetchProducts())}
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   const filteredProducts = selectedCategory === "All" 
@@ -207,10 +213,10 @@ export default function Index() {
       <View style={styles.productsContainer}>
         <Text style={styles.sectionTitle}>
           {selectedCategory === 'All' ? 'All Jewelry' : selectedCategory}
-          <Text style={styles.productCount}> ({filteredProducts.length})</Text>
+          <Text style={styles.productCount}> ({filteredProducts?.length || 0})</Text>
         </Text>
         
-        {filteredProducts.length === 0 ? (
+        {!filteredProducts || filteredProducts.length === 0 ? (
           <View style={styles.emptyStateContainer}>
             <Ionicons name="search-outline" size={48} color="#ccc" />
             <Text style={styles.emptyStateText}>No items found</Text>

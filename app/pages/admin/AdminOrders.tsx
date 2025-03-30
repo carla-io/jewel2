@@ -8,7 +8,7 @@ import * as Notifications from 'expo-notifications';
 import * as Permissions from 'expo-permissions';
 import Constants from 'expo-constants';
 
-const API_URL = "http://192.168.100.171:4000/api/order";
+const API_URL = "http://192.168.62.237:4000/api/order";
 
 const AdminOrdersScreen = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -37,8 +37,6 @@ const AdminOrdersScreen = () => {
       setUpdatingOrderId(null);
     }
 
-
-    
 };
 
 const registerForPushNotificationsAsync = async () => {
@@ -84,10 +82,10 @@ const registerForPushNotificationsAsync = async () => {
               <View style={styles.buttonContainer}>
                 <TouchableOpacity
                   style={[styles.button, styles.approveButton]}
-                  onPress={() => updateOrderStatus(item._id, "Approved")}
+                  onPress={() => updateOrderStatus(item._id, "Delivered")}
                   disabled={updatingOrderId === item._id}
                 >
-                  <Text style={styles.buttonText}>Approve</Text>
+                  <Text style={styles.buttonText}>Delivered</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity

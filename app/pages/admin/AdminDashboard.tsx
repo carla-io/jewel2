@@ -12,7 +12,7 @@ export default function AdminDashboard() {
 
   const fetchMonthlySalesData = async () => {
     try {
-      const response = await fetch("http://192.168.100.171:4000/api/auth/orders/monthly-sales");
+      const response = await fetch("http://192.168.62.237:4000/api/auth/orders/monthly-sales");
       const data = await response.json();
       if (data.salesData) {
         setSalesData(data.salesData);

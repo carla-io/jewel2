@@ -108,8 +108,8 @@ export default function SignUpScreen() {
 
     try {
         const url = isRegistering
-            ? "http://192.168.100.171:4000/api/auth/register"
-            : "http://192.168.100.171:4000/api/auth/login";
+            ? "http://192.168.62.237:4000/api/auth/register"
+            : "http://192.168.62.237:4000/api/auth/login";
 
         let requestData;
         let headers = { Accept: "application/json" }; // Default headers
