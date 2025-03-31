@@ -67,23 +67,45 @@ export default function ProductDetails() {
   useEffect(() => {
     const getUserData = async () => {
       try {
+        console.log("Attempting to get user data...");
+        
         // Try to get from AsyncStorage first
         const userData = await AsyncStorage.getItem("user");
         if (userData) {
           const parsedUser = JSON.parse(userData);
-          setUserId(parsedUser._id);
+          console.log("Full user data from AsyncStorage:", parsedUser);
+          
+          // Check what property contains the user ID
+          if (parsedUser._id) {
+            console.log("Using _id:", parsedUser._id);
+            setUserId(parsedUser._id);
+          } else if (parsedUser.id) {
+            console.log("Using id:", parsedUser.id);
+            setUserId(parsedUser.id);
+          } else {
+            console.log("No ID found in user data, structure:", Object.keys(parsedUser));
+            // Log all properties to find where the ID might be
+            for (const key in parsedUser) {
+              console.log(`${key}:`, parsedUser[key]);
+            }
+          }
           return;
         }
         
+        console.log("No user in AsyncStorage, trying API...");
         // If not in AsyncStorage, fetch from API
         const token = await AsyncStorage.getItem("token");
-        if (!token) return;
+        if (!token) {
+          console.log("No token found, cannot fetch user");
+          return;
+        }
         
         const response = await axios.post(
           "http://192.168.100.171:4000/api/auth/user",
           { token }
         );
         
+        console.log("User data from API:", response.data.user._id);
         setUserId(response.data.user._id);
       } catch (err) {
         console.error("Failed to get user data:", err);
@@ -95,26 +117,38 @@ export default function ProductDetails() {
 
   useEffect(() => {
     const fetchReviews = async () => {
-      if (!productId) return;
+      if (!productId || !userId) return;
       
       try {
         setReviewsLoading(true);
-        // Fetch all product reviews
-        const allReviewsResponse = await axios.get(`http://192.168.100.171:4000/api/reviews/${productId}`);
+        
+        // Fetch all product reviews - updated to use the correct endpoint
+        const allReviewsResponse = await axios.get(
+          `http://192.168.100.171:4000/api/reviews/get?productId=${productId}`
+        );
+        
+        console.log("All reviews response:", allReviewsResponse.data);
         
         if (allReviewsResponse.data.success) {
           setReviews(allReviewsResponse.data.reviews);
         }
         
-        // Fetch the current user's review if userId is available
-        if (userId) {
-          const userReviewResponse = await axios.get(`http://192.168.100.171:4000/api/reviews/getSingle/${productId}/${userId}`);
-          if (userReviewResponse.data.success && userReviewResponse.data.review) {
-            setUserReview(userReviewResponse.data.review);
-          }
+        // Fetch the current user's review - this endpoint looks correct
+        const userReviewResponse = await axios.get(
+          `http://192.168.100.171:4000/api/reviews/getSingle/${productId}/${userId}`
+        );
+        
+        console.log("User review response:", userReviewResponse.data);
+        
+        if (userReviewResponse.data.success && userReviewResponse.data.review) {
+          setUserReview(userReviewResponse.data.review);
         }
       } catch (error) {
         console.error("Error fetching reviews:", error);
+        if (error.response) {
+          console.log("Error response data:", error.response.data);
+          console.log("Error response status:", error.response.status);
+        }
       } finally {
         setReviewsLoading(false);
       }
@@ -124,7 +158,7 @@ export default function ProductDetails() {
       fetchReviews();
     }
   }, [productId, loading, product, userId]);
-
+  
   // Animate entry
   useEffect(() => {
     if (!loading && product) {
