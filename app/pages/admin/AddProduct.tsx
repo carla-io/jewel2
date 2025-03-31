@@ -11,11 +11,15 @@ import {
     Platform,
     ScrollView,
 } from "react-native";
-import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
 import RNPickerSelect from "react-native-picker-select";
+import { useDispatch, useSelector } from "react-redux";
+import { addProduct } from "../../redux/slices/productSlice";
 
 export default function AddProductScreen({ navigation }) {
+    const dispatch = useDispatch();
+    const { loading, error } = useSelector((state) => state.product);
+    
     const [product, setProduct] = useState({
         name: "",
         category: "Necklaces",
@@ -24,9 +28,8 @@ export default function AddProductScreen({ navigation }) {
         images: [],
     });
 
-    const categories = ["Necklaces", "Earrings", "Bracelets"];
+    const categories = ["Necklaces", "Earrings", "Bracelets", "Rings"];
 
-    // Function to pick an image from the gallery
     const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== "granted") {
@@ -50,7 +53,6 @@ export default function AddProductScreen({ navigation }) {
         }
     };
 
-    // Function to capture an image using the camera
     const captureImage = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== "granted") {
@@ -73,7 +75,6 @@ export default function AddProductScreen({ navigation }) {
         }
     };
 
-    // Function to show options to the admin (Choose from Gallery or Take Picture)
     const selectImage = () => {
         Alert.alert(
             "Select Image",
@@ -86,7 +87,6 @@ export default function AddProductScreen({ navigation }) {
         );
     };
 
-    // Function to handle product submission
     const handleAddProduct = async () => {
         if (!product.name || !product.category || !product.price || !product.description) {
             Alert.alert("Error", "All fields are required!");
@@ -98,49 +98,15 @@ export default function AddProductScreen({ navigation }) {
             return;
         }
 
-        const formData = new FormData();
-        formData.append("name", product.name);
-        formData.append("category", product.category);
-        formData.append("price", product.price);
-        formData.append("description", product.description);
-
-        product.images.forEach((image, index) => {
-            let uri = image.uri;
-            let fileName = uri.split("/").pop();
-            let fileType = fileName.includes(".") ? fileName.split(".").pop() : "jpg";
-
-            formData.append(`images`, {
-                uri: Platform.OS === "android" ? uri : uri.replace("file://", ""),
-                name: `product_image_${index}.${fileType}`,
-                type: `image/${fileType}`,
-            });
+        dispatch(addProduct(product)).then((result) => {
+            if (result.meta.requestStatus === "fulfilled") {
+                Alert.alert("Success!", "Product added successfully.");
+                setProduct({ name: "", category: "Necklaces", price: "", description: "", images: [] });
+                navigation.goBack();
+            } else {
+                Alert.alert("Error", result.payload || "Failed to add product.");
+            }
         });
-
-        try {
-            const response = await axios.post(
-                "http://192.168.62.237:4000/api/product/new",
-                formData,
-                {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                    },
-                }
-            );
-
-            Alert.alert("Success!", "Product added successfully.");
-            console.log("✅ Response:", response.data);
-
-            setProduct({
-                name: "",
-                category: "Necklaces",
-                price: "",
-                description: "",
-                images: [],
-            });
-        } catch (error) {
-            console.error("❌ Error adding product:", error.response?.data || error.message);
-            Alert.alert("Error", "Failed to add product. Check console for details.");
-        }
     };
 
     return (
@@ -187,7 +153,8 @@ export default function AddProductScreen({ navigation }) {
                 <Image key={index} source={{ uri: img.uri }} style={styles.imagePreview} />
             ))}
 
-            <Button title="Add Product" onPress={handleAddProduct} />
+            <Button title={loading ? "Adding..." : "Add Product"} onPress={handleAddProduct} disabled={loading} />
+            {error && <Text style={styles.error}>{error}</Text>}
         </ScrollView>
     );
 }

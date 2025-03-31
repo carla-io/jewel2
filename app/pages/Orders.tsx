@@ -36,7 +36,7 @@ const ReviewModal = ({
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const apiUrl = "http://192.168.62.237:4000";
+  const apiUrl = "http://192.168.100.171:4000";
   
 
   // Initialize with existing review data if editing
@@ -178,7 +178,7 @@ const fetchReview = async (productId, userId) => {
     const token = await AsyncStorage.getItem("token");
     if (!token) return null;
     
-    const apiUrl = "http://192.168.62.237:4000";
+    const apiUrl = "http://192.168.100.171:4000";
     
     const response = await axios.get(
       `${apiUrl}/api/reviews/getSingle/${productId}/${userId}`,
@@ -210,7 +210,7 @@ const hasBeenReviewed = async (orderId, productId) => {
     const user = JSON.parse(userData);
     const userId = user._id || user.id;
     
-    const apiUrl = "http://192.168.62.237:4000";
+    const apiUrl = "http://192.168.100.171:4000";
     
     const response = await axios.get(
       `${apiUrl}/api/reviews/getSingle/${productId}/${userId}`,

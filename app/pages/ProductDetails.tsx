@@ -9,7 +9,6 @@ import {
   Dimensions,
   Animated,
   Share,
-  FlatList,
   ActivityIndicator
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,70 +17,52 @@ import { CartContext } from "../../context/CartContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useDispatch, useSelector } from "react-redux";
+import { fetchProductById } from "../redux/slices/productSlice";
 const { width, height } = Dimensions.get("window");
 
 export default function ProductDetails() {
   const { addToCart } = useContext(CartContext);
   const navigation = useNavigation();
   const route = useRoute();
+  const dispatch = useDispatch();
   
   // Try to get productId safely
   const productId = route.params?.productId;
 
-  const [loading, setLoading] = useState(true);
-  const [product, setProduct] = useState(null);
-  const [error, setError] = useState(null);
+  // Get product state from Redux
+  const { product, loading, error } = useSelector((state) => state.product);
+  
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [favorite, setFavorite] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState(null);
-  const [addedToCartItems, setAddedToCartItems] = useState({});
   const [reviews, setReviews] = useState([]);
-const [userReview, setUserReview] = useState(null);
-const [reviewsLoading, setReviewsLoading] = useState(true);
-const [userId, setUserId] = useState(null);
+  const [userReview, setUserReview] = useState(null);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [userId, setUserId] = useState(null);
   
   // Animation values
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
 
-
-  // Fetch product details from API
+  // Fetch product details from Redux
   useEffect(() => {
-    const fetchProductDetails = async () => {
-      try {
-        setLoading(true);
-        
-        // Make sure productId exists and is valid
-        if (!productId) {
-          console.error("Product ID is missing from route params");
-          setError("Product ID is missing");
-          setLoading(false);
-          return;
-        }
-        
-        // Make the API request with the correct URL format
-        const response = await axios.get(`http://192.168.62.237:4000/api/product/${productId}`);
-        
-        if (response.data.success) {
-          setProduct(response.data.product);
-          if (response.data.product.variants && response.data.product.variants.length > 0) {
-            setSelectedVariant(response.data.product.variants[0]);
-          }
-        } else {
-          setError("Failed to load product details");
-        }
-      } catch (error) {
-        console.error("Error fetching product details:", error.response || error);
-        setError("Error loading product. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-  
-    fetchProductDetails();
-  }, [productId]);
+    if (!productId) {
+      console.error("Product ID is missing from route params");
+      return;
+    }
+    
+    dispatch(fetchProductById(productId));
+  }, [dispatch, productId]);
+
+  // Set selected variant when product loads
+  useEffect(() => {
+    if (product && product.variants && product.variants.length > 0) {
+      setSelectedVariant(product.variants[0]);
+    }
+  }, [product]);
 
   useEffect(() => {
     const getUserData = async () => {
@@ -99,7 +80,7 @@ const [userId, setUserId] = useState(null);
         if (!token) return;
         
         const response = await axios.post(
-          "http://192.168.62.237:4000/api/auth/user",
+          "http://192.168.100.171:4000/api/auth/user",
           { token }
         );
         
@@ -112,38 +93,37 @@ const [userId, setUserId] = useState(null);
     getUserData();
   }, []);
 
-  
-    useEffect(() => {
-      const fetchReviews = async () => {
-        if (!productId) return;
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!productId) return;
+      
+      try {
+        setReviewsLoading(true);
+        // Fetch all product reviews
+        const allReviewsResponse = await axios.get(`http://192.168.100.171:4000/api/reviews/${productId}`);
         
-        try {
-          setReviewsLoading(true);
-          // Fetch all product reviews
-          const allReviewsResponse = await axios.get(`http://192.168.62.237:4000/api/reviews/${productId}`);
-          
-          if (allReviewsResponse.data.success) {
-            setReviews(allReviewsResponse.data.reviews);
-          }
-          
-          // Fetch the current user's review if userId is available
-          if (userId) {
-            const userReviewResponse = await axios.get(`http://192.168.62.237:4000/api/reviews/getSingle/${productId}/${userId}`);
-            if (userReviewResponse.data.success && userReviewResponse.data.review) {
-              setUserReview(userReviewResponse.data.review);
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching reviews:", error);
-        } finally {
-          setReviewsLoading(false);
+        if (allReviewsResponse.data.success) {
+          setReviews(allReviewsResponse.data.reviews);
         }
-      };
-    
-      if (!loading && product && userId) {
-        fetchReviews();
+        
+        // Fetch the current user's review if userId is available
+        if (userId) {
+          const userReviewResponse = await axios.get(`http://192.168.100.171:4000/api/reviews/getSingle/${productId}/${userId}`);
+          if (userReviewResponse.data.success && userReviewResponse.data.review) {
+            setUserReview(userReviewResponse.data.review);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching reviews:", error);
+      } finally {
+        setReviewsLoading(false);
       }
-    }, [productId, loading, product, userId]);
+    };
+  
+    if (!loading && product && userId) {
+      fetchReviews();
+    }
+  }, [productId, loading, product, userId]);
 
   // Animate entry
   useEffect(() => {
@@ -410,103 +390,102 @@ const [userId, setUserId] = useState(null);
           </View>
           
           {/* Reviews Section */}
-<View style={styles.reviewsContainer}>
-  <Text style={styles.sectionTitle}>Reviews</Text>
-  
-  {reviewsLoading ? (
-    <ActivityIndicator size="small" color="#e55c6c" />
-  ) : reviews.length > 0 ? (
-    <>
-      {/* Display user's own review if it exists */}
-      {userReview && (
-        <View style={styles.userReviewContainer}>
-          <Text style={styles.userReviewLabel}>Your Review</Text>
-          <View style={styles.reviewItem}>
-            <View style={styles.reviewHeader}>
-              <View style={styles.reviewerInfo}>
-                <Image
-                  source={{ uri: userReview.userImage || 'https://via.placeholder.com/40' }}
-                  style={styles.reviewerImage}
-                />
-                <View>
-                  <Text style={styles.reviewerName}>You</Text>
-                  <Text style={styles.reviewDate}>
-                    {new Date(userReview.createdAt).toLocaleDateString()}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.stars}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Ionicons
-                    key={star}
-                    name={star <= userReview.rating ? "star" : "star-outline"}
-                    size={14}
-                    color="#FFD700"
-                  />
+          <View style={styles.reviewsContainer}>
+            <Text style={styles.sectionTitle}>Reviews</Text>
+            
+            {reviewsLoading ? (
+              <ActivityIndicator size="small" color="#e55c6c" />
+            ) : reviews.length > 0 ? (
+              <>
+                {/* Display user's own review if it exists */}
+                {userReview && (
+                  <View style={styles.userReviewContainer}>
+                    <Text style={styles.userReviewLabel}>Your Review</Text>
+                    <View style={styles.reviewItem}>
+                      <View style={styles.reviewHeader}>
+                        <View style={styles.reviewerInfo}>
+                          <Image
+                            source={{ uri: userReview.userImage || 'https://via.placeholder.com/40' }}
+                            style={styles.reviewerImage}
+                          />
+                          <View>
+                            <Text style={styles.reviewerName}>You</Text>
+                            <Text style={styles.reviewDate}>
+                              {new Date(userReview.createdAt).toLocaleDateString()}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.stars}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Ionicons
+                              key={star}
+                              name={star <= userReview.rating ? "star" : "star-outline"}
+                              size={14}
+                              color="#FFD700"
+                            />
+                          ))}
+                        </View>
+                      </View>
+                      <Text style={styles.reviewText}>{userReview.comment}</Text>
+                    </View>
+                  </View>
+                )}
+                
+                {/* Other reviews list - limited to 3 for space */}
+                {reviews.slice(0, 3).map((review) => (
+                  <View key={review._id} style={styles.reviewItem}>
+                    <View style={styles.reviewHeader}>
+                      <View style={styles.reviewerInfo}>
+                        <Image
+                          source={{ uri: review.userImage || 'https://via.placeholder.com/40' }}
+                          style={styles.reviewerImage}
+                        />
+                        <View>
+                          <Text style={styles.reviewerName}>{review.userName}</Text>
+                          <Text style={styles.reviewDate}>
+                            {new Date(review.createdAt).toLocaleDateString()}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.stars}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Ionicons
+                            key={star}
+                            name={star <= review.rating ? "star" : "star-outline"}
+                            size={14}
+                            color="#FFD700"
+                          />
+                        ))}
+                      </View>
+                    </View>
+                    <Text style={styles.reviewText}>{review.comment}</Text>
+                  </View>
                 ))}
+                
+                {/* View all reviews button */}
+                {reviews.length > 3 && (
+                  <TouchableOpacity 
+                    style={styles.viewAllButton}
+                    onPress={() => navigation.navigate('AllReviews', { productId, productName: product.name })}
+                  >
+                    <Text style={styles.viewAllText}>View all {reviews.length} reviews</Text>
+                    <Ionicons name="chevron-forward" size={16} color="#e55c6c" />
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : (
+              <View style={styles.noReviewsContainer}>
+                <Ionicons name="chatbubble-ellipses-outline" size={40} color="#ccc" />
+                <Text style={styles.noReviewsText}>No reviews yet</Text>
+                <TouchableOpacity 
+                  style={styles.writeReviewButton}
+                  onPress={() => navigation.navigate('WriteReview', { productId, productName: product.name })}
+                >
+                  <Text style={styles.writeReviewText}>Write the first review</Text>
+                </TouchableOpacity>
               </View>
-            </View>
-            <Text style={styles.reviewText}>{userReview.comment}</Text>
+            )}
           </View>
-        </View>
-      )}
-      
-      {/* Other reviews list - limited to 3 for space */}
-      {reviews.slice(0, 3).map((review) => (
-        <View key={review._id} style={styles.reviewItem}>
-          <View style={styles.reviewHeader}>
-            <View style={styles.reviewerInfo}>
-              <Image
-                source={{ uri: review.userImage || 'https://via.placeholder.com/40' }}
-                style={styles.reviewerImage}
-              />
-              <View>
-                <Text style={styles.reviewerName}>{review.userName}</Text>
-                <Text style={styles.reviewDate}>
-                  {new Date(review.createdAt).toLocaleDateString()}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.stars}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Ionicons
-                  key={star}
-                  name={star <= review.rating ? "star" : "star-outline"}
-                  size={14}
-                  color="#FFD700"
-                />
-              ))}
-            </View>
-          </View>
-          <Text style={styles.reviewText}>{review.comment}</Text>
-        </View>
-      ))}
-      
-      {/* View all reviews button */}
-      {reviews.length > 3 && (
-        <TouchableOpacity 
-          style={styles.viewAllButton}
-          onPress={() => navigation.navigate('AllReviews', { productId, productName: product.name })}
-        >
-          <Text style={styles.viewAllText}>View all {reviews.length} reviews</Text>
-          <Ionicons name="chevron-forward" size={16} color="#e55c6c" />
-        </TouchableOpacity>
-      )}
-    </>
-  ) : (
-    <View style={styles.noReviewsContainer}>
-      <Ionicons name="chatbubble-ellipses-outline" size={40} color="#ccc" />
-      <Text style={styles.noReviewsText}>No reviews yet</Text>
-      <TouchableOpacity 
-        style={styles.writeReviewButton}
-        onPress={() => navigation.navigate('WriteReview', { productId, productName: product.name })}
-      >
-        <Text style={styles.writeReviewText}>Write the first review</Text>
-      </TouchableOpacity>
-    </View>
-  )}
-</View>
-         
         </View>
       </ScrollView>
       
