@@ -487,12 +487,12 @@ export default function ProductDetails() {
     <View style={styles.noReviewsContainer}>
       <Ionicons name="chatbubble-ellipses-outline" size={40} color="#ccc" />
       <Text style={styles.noReviewsText}>No reviews yet</Text>
-      <TouchableOpacity 
+      {/* <TouchableOpacity 
         style={styles.writeReviewButton}
         onPress={() => navigation.navigate('WriteReview', { productId, productName: product.name })}
       >
         <Text style={styles.writeReviewText}>Write the first review</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   )}
 </View>
