@@ -17,12 +17,15 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUserOrders } from "../redux/slices/orderSlice";
+import { 
+  fetchReview, 
+  submitReview, 
+  hasBeenReviewed 
+} from "../redux/slices/reviewSlice";
 import { RootState, AppDispatch } from "../redux/store";
-import { Ionicons } from "@expo/vector-icons"; // Make sure to install expo vector icons
-import axios from "axios"; // Assuming you're already using axios
+import { Ionicons } from "@expo/vector-icons";
 
 // Review Component
-
 const ReviewModal = ({ 
   visible, 
   onClose, 
@@ -30,14 +33,14 @@ const ReviewModal = ({
   productName, 
   productImage, 
   orderId,
-  existingReview, // Add this prop to receive existing review data
-  isEditing // Add this prop to indicate if we're editing an existing review
+  existingReview,
+  isEditing
 }) => {
+  const dispatch = useDispatch();
+  const { isLoading } = useSelector((state) => state.review);
+  
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const apiUrl = "http://192.168.100.171:4000";
-  
 
   // Initialize with existing review data if editing
   useEffect(() => {
@@ -58,11 +61,9 @@ const ReviewModal = ({
     }
 
     try {
-      setSubmitting(true);
-      const token = await AsyncStorage.getItem("token");
       const userData = await AsyncStorage.getItem("user");
       
-      if (!token || !userData) {
+      if (!userData) {
         Alert.alert("Error", "You need to be logged in to leave a review");
         return;
       }
@@ -73,47 +74,25 @@ const ReviewModal = ({
       
       if (!productId) {
         Alert.alert("Error", "Product information is missing");
-        setSubmitting(false);
         return;
       }
 
       const reviewData = { userId, username, productId, orderId, rating, comment };
-
-      // Use PUT for updating, POST for creating
-      const endpoint = isEditing 
-        ? `${apiUrl}/api/reviews/update` 
-        : `${apiUrl}/api/reviews/add`;
       
-      const method = isEditing ? 'put' : 'post';
+      const resultAction = await dispatch(submitReview({ reviewData, isEditing }));
       
-      const response = await axios({
-        method,
-        url: endpoint,
-        data: reviewData,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        }
-      });
-
-      Alert.alert(
-        "Success", 
-        isEditing ? "Your review has been updated!" : "Your review has been submitted!"
-      );
-      
-      onClose(true); // Pass true to indicate success
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 404) {
-          Alert.alert("Error", "Review endpoint not found. Please check your API configuration.");
-        } else {
-          Alert.alert("Error", `Failed to ${isEditing ? 'update' : 'submit'} review: ${error.response?.data?.message || "Please try again."}`);
-        }
-      } else {
-        Alert.alert("Error", `Failed to ${isEditing ? 'update' : 'submit'} review. Please try again.`);
+      if (submitReview.fulfilled.match(resultAction)) {
+        Alert.alert(
+          "Success", 
+          isEditing ? "Your review has been updated!" : "Your review has been submitted!"
+        );
+        onClose(true); // Pass true to indicate success
+      } else if (submitReview.rejected.match(resultAction)) {
+        const errorMessage = resultAction.payload || "Something went wrong";
+        Alert.alert("Error", `Failed to ${isEditing ? 'update' : 'submit'} review: ${errorMessage}`);
       }
-    } finally {
-      setSubmitting(false);
+    } catch (error) {
+      Alert.alert("Error", `Failed to ${isEditing ? 'update' : 'submit'} review. Please try again.`);
     }
   };
 
@@ -157,8 +136,8 @@ const ReviewModal = ({
             onChangeText={setComment}
           />
           
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmitReview} disabled={submitting}>
-            {submitting ? (
+          <TouchableOpacity style={styles.submitButton} onPress={handleSubmitReview} disabled={isLoading}>
+            {isLoading ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <Text style={styles.submitButtonText}>
@@ -172,68 +151,11 @@ const ReviewModal = ({
   );
 };
 
-// Fetch a single review
-const fetchReview = async (productId, userId) => {
-  try {
-    const token = await AsyncStorage.getItem("token");
-    if (!token) return null;
-    
-    const apiUrl = "http://192.168.100.171:4000";
-    
-    const response = await axios.get(
-      `${apiUrl}/api/reviews/getSingle/${productId}/${userId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    
-    if (response.data.success && response.data.review) {
-      return response.data.review;
-    }
-    return null;
-  } catch (error) {
-    console.error("Error fetching review:", error);
-    return null;
-  }
-};
-
-// Check if product has been reviewed
-const hasBeenReviewed = async (orderId, productId) => {
-  try {
-    const token = await AsyncStorage.getItem("token");
-    const userData = await AsyncStorage.getItem("user");
-    
-    if (!token || !userData) return false;
-    
-    const user = JSON.parse(userData);
-    const userId = user._id || user.id;
-    
-    const apiUrl = "http://192.168.100.171:4000";
-    
-    const response = await axios.get(
-      `${apiUrl}/api/reviews/getSingle/${productId}/${userId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    
-    return response.data.success === true;
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status === 404) {
-      return false;
-    }
-    console.error("Error checking review status:", error);
-    return false;
-  }
-};
-
 const OrdersScreen = () => {
   const dispatch = useDispatch();
   const { orders = [], status, error } = useSelector((state) => state.order);
+  const { userReview, hasReviewed } = useSelector((state) => state.review);
+  
   const [selectedTab, setSelectedTab] = useState("Processing");
   const [userId, setUserId] = useState(null);
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
@@ -288,7 +210,11 @@ const OrdersScreen = () => {
             if (!productId) continue;
             
             const key = `${order._id}-${productId}`;
-            const reviewed = await hasBeenReviewed(order._id, productId);
+            
+            // Use Redux action instead of direct API call
+            const resultAction = await dispatch(hasBeenReviewed({ productId, userId }));
+            const reviewed = hasBeenReviewed.fulfilled.match(resultAction) ? resultAction.payload : false;
+            
             reviewStatusMap[key] = reviewed;
           }
         }
@@ -298,17 +224,17 @@ const OrdersScreen = () => {
     };
     
     checkReviewedProducts();
-  }, [selectedTab, orders, userId, refreshReviews]);
+  }, [selectedTab, orders, userId, refreshReviews, dispatch]);
 
   // View and edit existing review
   const handleViewReview = async (productId, name, image, orderId) => {
     if (!productId || !userId) return;
     
     try {
-      const review = await fetchReview(productId, userId);
+      const resultAction = await dispatch(fetchReview({ productId, userId }));
       
-      if (review) {
-        setExistingReview(review);
+      if (fetchReview.fulfilled.match(resultAction) && resultAction.payload) {
+        setExistingReview(resultAction.payload);
         setIsEditingReview(true);
         setSelectedProduct({
           id: productId,
