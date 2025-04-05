@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const apiUrl = "http://192.168.100.171:4000";
+const apiUrl = "http://192.168.120.237:4000";
 
 // Fetch a single review
 export const fetchReview = createAsyncThunk("reviews/fetchReview", async ({ productId, userId }, { rejectWithValue }) => {

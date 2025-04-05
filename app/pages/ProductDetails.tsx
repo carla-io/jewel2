@@ -106,7 +106,7 @@ export default function ProductDetails() {
         }
         
         const response = await axios.post(
-          "http://192.168.100.171:4000/api/auth/user",
+          "http://192.168.120.237:4000/api/auth/user",
           { token }
         );
         

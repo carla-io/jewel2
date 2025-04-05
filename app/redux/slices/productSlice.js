@@ -1,8 +1,8 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
-const API_BASE_URL = "http://192.168.100.171:4000/api/product";
-const SEARCH_API_URL = "http://192.168.100.171:4000/api/product/search";
+const API_BASE_URL = "http://192.168.120.237:4000/api/product";
+const SEARCH_API_URL = "http://192.168.120.237:4000/api/product/search";
 
 // Async thunk for adding a product
 export const addProduct = createAsyncThunk("products/addProduct", async (product, { rejectWithValue }) => {
