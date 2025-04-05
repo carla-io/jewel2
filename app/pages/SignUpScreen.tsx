@@ -11,6 +11,9 @@ import { UserContext } from "../../context/UserContext";
 import { CartContext } from "../../context/CartContext";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
+
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -103,6 +106,66 @@ export default function SignUpScreen() {
     }
   };
 
+  const registerForPushNotifications = async (userId) => {
+    if (Device.isDevice) {
+      // Check for existing permissions
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      
+      // If no permissions, ask the user
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      
+      // If still no permissions, exit
+      if (finalStatus !== 'granted') {
+        Alert.alert('Notification Permission', 'Failed to get push notification permissions');
+        return;
+      }
+      
+      // Get the token
+      const tokenData = await Notifications.getExpoPushTokenAsync({
+        projectId: undefined, // Use your project ID if you have one configured
+      });
+      const token = tokenData.data;
+      
+      // Get device info for debugging
+      const deviceInfo = {
+        os: Platform.OS,
+        osVersion: Device.osVersion,
+        deviceName: Device.deviceName || 'Unknown',
+        brand: Device.brand || 'Unknown',
+        model: Device.modelName || 'Unknown'
+      };
+      
+      console.log('Registering push token:', token, 'for user:', userId);
+      
+      // Register token with your backend
+      try {
+        const response = await axios.post(
+          'http://192.168.120.237:4000/api/notifications/register-token',
+          {
+            expoPushToken: token,
+            userId: userId,
+            deviceInfo
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        
+        console.log('Push token registration response:', response.data);
+      } catch (error) {
+        console.error('Error registering push token:', error.response?.data || error.message);
+      }
+    } else {
+      Alert.alert('Physical Device Required', 'Push notifications require a physical device');
+    }
+  };
+
   const handleSubmit = async () => {
     console.log("Sending data:", user.email, user.password);
 
@@ -173,8 +236,6 @@ export default function SignUpScreen() {
         setError(error.response?.data?.message || "Something went wrong");
     }
 };
-
-
 
   const togglePasswordVisibility = () => {
     setIsPasswordVisible(!isPasswordVisible);

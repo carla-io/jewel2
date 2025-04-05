@@ -249,18 +249,19 @@ export function Sidebar() {
                 name="products"
               />
 
-              <SidebarItem 
-                icon="people-outline" 
-                label="Users" 
-                onPress={() => navigateTo("/pages/Users", "users")} 
-                name="users"
-              />
 
               <SidebarItem 
                 icon="clipboard-outline" 
                 label="Orders" 
                 onPress={() => navigateTo("/pages/admin/AdminOrders", "orders")} 
                 name="orders"
+              />
+
+              <SidebarItem 
+                icon="diamond-outline" 
+                label="Promotions" 
+                onPress={() => navigateTo("/pages/admin/AddPromotions", "promotions")} 
+                name="promotions"
               />
             </>
           ) : (

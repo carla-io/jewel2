@@ -9,6 +9,7 @@ export default function AdminDashboard() {
       <Button title="Go to Products" onPress={() => router.push("/pages/admin/Products")} />
       <Button title="Add Product" onPress={() => router.push("/pages/admin/AddProduct")} />
       <Button title="Orders" onPress={() => router.push("/pages/admin/AdminOrders")} />
+      <Button title="Promotions" onPress={() => router.push("/pages/admin/AddPromotions")} />
     </View>
   );
 }
