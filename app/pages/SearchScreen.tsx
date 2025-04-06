@@ -24,7 +24,7 @@ const SearchScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [minPrice, setMinPrice] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(500);
+  const [maxPrice, setMaxPrice] = useState(1000);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -65,19 +65,7 @@ const SearchScreen = () => {
     // Simple router.push with string path and query parameter
     router.push(`/pages/ProductDetails?productId=${productId}`);
     
-    // Alternative syntaxes (uncomment the one that matches your router):
-    
-    // Expo Router object syntax
-    // router.push({
-    //   pathname: "/pages/ProductDetails",
-    //   params: { productId }
-    // });
-    
-    // Next.js
-    // router.push({
-    //   pathname: '/pages/ProductDetails',
-    //   query: { productId },
-    // });
+   
   };
 
   useEffect(() => {
@@ -125,7 +113,7 @@ const SearchScreen = () => {
         <Slider
           style={{ width: "100%", height: 40 }}
           minimumValue={0}
-          maximumValue={500}
+          maximumValue={1000}
           step={10}
           value={maxPrice}
           onValueChange={(value) => setMaxPrice(Math.max(minPrice, value))}

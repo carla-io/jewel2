@@ -7,8 +7,8 @@ import { RootState, AppDispatch } from "../../redux/store";
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken, getUserData } from '../../utils/TokenManager';
+import { useRouter } from 'expo-router'; // Expo Router
 
 const API_URL = "http://192.168.144.237:4000/api";
 
@@ -26,10 +26,15 @@ const AdminOrdersScreen = () => {
   const { orders, status, error } = useSelector((state: RootState) => state.order);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [expoPushToken, setExpoPushToken] = useState<string | undefined>();
+  const router = useRouter();
 
+  // Effect for fetching orders
   useEffect(() => {
     dispatch(fetchOrders());
-    
+  }, [dispatch]);
+  
+  // Separate effect for push notifications setup
+  useEffect(() => {
     // Set up push notifications
     registerForPushNotificationsAsync().then(token => {
       if (token) {
@@ -44,26 +49,24 @@ const AdminOrdersScreen = () => {
         console.log('Notification received:', notification);
       }
     );
+    
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+      console.log('Notification response:', response);
 
-    const responseListener = Notifications.addNotificationResponseReceivedListener(
-      response => {
-        console.log('Notification response:', response);
-        
-        // Handle navigation if the notification has screen info
-        const data = response.notification.request.content.data;
-        if (data && data.screen) {
-          // Navigate to the screen specified in notification
-          // navigation.navigate(data.screen, data.params);
-          console.log('Should navigate to:', data.screen, data.params);
-        }
+      const data = response.notification.request.content.data;
+      if (data && data.screen) {
+        // Use router.push instead of navigation.navigate
+        router.push({ pathname: `/pages/admin/OrderDetails`, query: data.params });
+        // The pathname can be dynamic like '/order/[orderId]' if it's a dynamic route
+        console.log('Should navigate to:', data.screen, data.params);
       }
-    );
+    });
 
     return () => {
       Notifications.removeNotificationSubscription(notificationListener);
       Notifications.removeNotificationSubscription(responseListener);
     };
-  }, [dispatch]);
+  }, [router]); // Added router as a dependency
 
   const registerTokenWithServer = async (expoPushToken: string) => {
     try {
@@ -201,7 +204,6 @@ const AdminOrdersScreen = () => {
     }
   };
 
-
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Admin Order Management</Text>
@@ -255,6 +257,7 @@ const styles = StyleSheet.create({
   orderItem: { backgroundColor: "#f8f8f8", padding: 15, borderRadius: 8, marginBottom: 15 },
   orderTitle: { fontSize: 16, fontWeight: "bold", color: "#333" },
   orderStatus: { fontSize: 14, fontWeight: "bold", color: "#555", marginBottom: 10 },
+  orderUser: { fontSize: 14, color: "#555", marginBottom: 10 },
   buttonContainer: { flexDirection: "row", justifyContent: "space-between" },
   button: { flex: 1, padding: 10, borderRadius: 5, alignItems: "center", marginHorizontal: 5 },
   approveButton: { backgroundColor: "#28a745" },

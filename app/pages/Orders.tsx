@@ -310,7 +310,7 @@ const OrdersScreen = () => {
         
         return (
           <View key={index} style={styles.productItem}>
-            <Image source={{ uri: product.image }} style={styles.productImage} />
+          <Image source={{ uri: product.image }} style={styles.productImage} />
             <View style={styles.productDetails}>
               <Text style={styles.productName}>{product.name}</Text>
               <View style={styles.productMetaContainer}>

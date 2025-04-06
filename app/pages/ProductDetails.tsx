@@ -47,6 +47,8 @@ export default function ProductDetails() {
   const [favorite, setFavorite] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [userId, setUserId] = useState(null);
+
+
   
   // Animation values
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -201,12 +203,16 @@ export default function ProductDetails() {
     }
   };
 
-  const increaseQuantity = () => setQuantity(prev => prev + 1);
+  const increaseQuantity = () => {
+    setQuantity(prev => prev + 1);
+  };
+  
   const decreaseQuantity = () => {
     if (quantity > 1) {
       setQuantity(prev => prev - 1);
     }
   };
+  
 
   const toggleFavorite = () => setFavorite(prev => !prev);
 

@@ -24,7 +24,7 @@ export default function AdminPromotionFormMobile() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://192.168.120.237:4000/api/promotions/save', {
+      const response = await fetch('http://192.168.144.237:4000/api/promotions/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

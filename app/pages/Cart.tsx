@@ -44,7 +44,11 @@ export default function CartScreen() {
             renderItem={({ item }) => (
               <View style={styles.cartItem}>
                 <View style={styles.imageContainer}>
-                  <Image source={{ uri: item.image }} style={styles.image} />
+                <Image 
+  source={{ uri: item.image?.url || item.images?.[0]?.url || 'https://via.placeholder.com/150' }} 
+  style={styles.image}
+/>
+
                 </View>
                 
                 <View style={styles.itemContent}>

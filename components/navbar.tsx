@@ -74,7 +74,8 @@ export function TopNavbar() {
   placeholder="Search..."
   placeholderTextColor="#aaa"
   value={searchQuery}
-  onChangeText={handleSearch}  // Call handleSearch on every keystroke
+  onChangeText={(text) => setSearchQuery(text)}
+  onFocus={() => router.push("/pages/SearchScreen", { search: searchQuery })}
 />
       </View>
       
@@ -266,19 +267,14 @@ export function Sidebar() {
             </>
           ) : (
             <>
-              {/* <SidebarItem 
-                icon="diamond-outline" 
-                label="Collections" 
-                onPress={() => navigateTo("/pages/Collections", "collections")} 
-                name="collections"
-              /> */}
+          
               
-              <SidebarItem 
+              {/* <SidebarItem 
                 icon="heart-outline" 
                 label="Wishlist" 
                 onPress={() => navigateTo("/pages/Wishlist", "wishlist")} 
                 name="wishlist"
-              />
+              /> */}
               
               <SidebarItem 
                 icon="clipboard-outline" 
@@ -296,26 +292,8 @@ export function Sidebar() {
             name="profile"
           />
           
-          {/* <SidebarItem 
-            icon="settings-outline" 
-            label="Settings" 
-            onPress={() => navigateTo("/pages/Settings", "settings")} 
-            name="settings"
-          /> */}
         </View>
         
-        {/* <View style={styles.sidebarFooter}>
-          <LinearGradient 
-            colors={['#ff6b98', '#ff92b3']} 
-            style={styles.footerGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <Ionicons name="diamond" size={20} color="#fff" />
-            <Text style={styles.footerText}>Premium Jewels</Text>
-            <Ionicons name="chevron-forward" size={16} color="#fff" />
-          </LinearGradient>
-        </View> */}
       </Animated.View>
     </>
   );

@@ -81,19 +81,27 @@ export const CartProvider = ({ children }) => {
 
   // Add an item to the cart
   const addToCart = (item) => {
+    const safeQuantity = Number(item.quantity) || 1;
+  
     setCart((prevCart) => {
       const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
+  
       if (existingItem) {
         return prevCart.map((cartItem) =>
           cartItem.id === item.id
-            ? { ...cartItem, quantity: cartItem.quantity + 1 }
+            ? {
+                ...cartItem,
+                quantity: cartItem.quantity + safeQuantity
+              }
             : cartItem
         );
       } else {
-        return [...prevCart, { ...item, quantity: 1 }];
+        return [...prevCart, { ...item, quantity: safeQuantity }];
       }
     });
   };
+  
+  
 
   // Decrease item quantity in the cart
   const decreaseQuantity = (itemId) => {

@@ -270,9 +270,9 @@ export default function Index() {
                         ))}
                       </ScrollView>
                       {renderImageDots(validImages)}
-                      <TouchableOpacity style={styles.favoriteButton}>
+                      {/* <TouchableOpacity style={styles.favoriteButton}>
                         <Ionicons name="heart-outline" size={18} color="#e55c6c" />
-                      </TouchableOpacity>
+                      </TouchableOpacity> */}
                     </View>
                     
                     <View style={styles.productInfo}>
