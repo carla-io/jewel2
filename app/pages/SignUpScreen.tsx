@@ -13,7 +13,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-
+import Constants from 'expo-constants';
+import { storeAuthData, getUserData, clearAuthData } from '../utils/TokenManager';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -45,10 +46,9 @@ export default function SignUpScreen() {
 
   const checkLoggedInUser = async () => {
     try {
-      const userData = await AsyncStorage.getItem("user");
+      const userData = await getUserData();
       if (userData) {
-        const parsedUser = JSON.parse(userData);
-        if (parsedUser.role === "admin") {
+        if (userData.role === "admin") {
           router.replace("/pages/admin/AdminDashboard");
         } else {
           router.replace("/pages/UserProfile");
@@ -106,73 +106,56 @@ export default function SignUpScreen() {
     }
   };
 
-  const registerForPushNotifications = async (userId) => {
-    if (Device.isDevice) {
-      // Check for existing permissions
+  const registerPushToken = async (userId) => {
+    try {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
-      
-      // If no permissions, ask the user
+  
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
-      
-      // If still no permissions, exit
+  
       if (finalStatus !== 'granted') {
-        Alert.alert('Notification Permission', 'Failed to get push notification permissions');
+        console.log('Push notification permission denied');
         return;
       }
-      
-      // Get the token
+  
       const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: undefined, // Use your project ID if you have one configured
+        projectId: Constants.expoConfig?.extra?.eas?.projectId,
       });
-      const token = tokenData.data;
-      
-      // Get device info for debugging
-      const deviceInfo = {
-        os: Platform.OS,
-        osVersion: Device.osVersion,
-        deviceName: Device.deviceName || 'Unknown',
-        brand: Device.brand || 'Unknown',
-        model: Device.modelName || 'Unknown'
-      };
-      
-      console.log('Registering push token:', token, 'for user:', userId);
-      
-      // Register token with your backend
-      try {
-        const response = await axios.post(
-          'http://192.168.120.237:4000/api/notifications/register-token',
-          {
-            expoPushToken: token,
-            userId: userId,
-            deviceInfo
+  
+      const expoPushToken = tokenData.data;
+  
+      await fetch('http://192.168.144.237:4000/api/notifications/register-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          expoPushToken,
+          userId,
+          deviceInfo: {
+            platform: Platform.OS,
+            model: Constants.deviceName || 'Unknown',
+            osVersion: Platform.Version,
           },
-          {
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        
-        console.log('Push token registration response:', response.data);
-      } catch (error) {
-        console.error('Error registering push token:', error.response?.data || error.message);
-      }
-    } else {
-      Alert.alert('Physical Device Required', 'Push notifications require a physical device');
+        }),
+      });
+  
+      console.log("📦 Registering push token for userId:", userId);
+      console.log('✅ Push token registered successfully:', expoPushToken);
+    } catch (error) {
+      console.error('❌ Error registering push token:', error);
     }
   };
+  
 
   const handleSubmit = async () => {
     console.log("Sending data:", user.email, user.password);
 
     try {
         const url = isRegistering
-            ? "http://192.168.120.237:4000/api/auth/register"
-            : "http://192.168.120.237:4000/api/auth/login";
+            ? "http://192.168.144.237:4000/api/auth/register"
+            : "http://192.168.144.237:4000/api/auth/login";
 
         let requestData;
         let headers = { Accept: "application/json" }; // Default headers
@@ -219,17 +202,25 @@ export default function SignUpScreen() {
 
         console.log("Response:", response.data);
 
-        await AsyncStorage.setItem("user", JSON.stringify(response.data.user));
-        await AsyncStorage.setItem("token", response.data.token);
+        // Updated: Replace AsyncStorage with SecureStore
+        await storeAuthData({
+          token: response.data.token,
+          userData: response.data.user
+        });
+        
+        // ✅ Register push token
+        console.log("Registering push token for user:", response.data.user.id);
+        await registerPushToken(response.data.user.id);
+        console.log("Full response data:", response.data);
 
         Alert.alert("Success", isRegistering ? "Registration successful!" : "Login successful!");
-
+        
         if (!isRegistering) {
-            if (response.data.user.role === "admin") {
-                router.push("/pages/admin/AdminDashboard"); // Replace with correct screen name
-            } else {
-                router.push("/pages/UserProfile"); // Replace with correct screen name
-            }
+          if (response.data.user.role === "admin") {
+            router.push("/pages/admin/AdminDashboard");
+          } else {
+            router.push("/pages/UserProfile");
+          }
         }
     } catch (error) {
         console.error("Error:", error.response?.data);

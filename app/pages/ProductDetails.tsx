@@ -21,6 +21,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchProductById } from "../redux/slices/productSlice";
 import { fetchReview, fetchReviews } from "../redux/slices/reviewSlice";
 const { width, height } = Dimensions.get("window");
+import { getUserData, getToken, storeUserData } from "../utils/TokenManager";
 
 export default function ProductDetails() {
   const { addToCart } = useContext(CartContext);
@@ -70,54 +71,58 @@ export default function ProductDetails() {
   }, [product]);
 
   useEffect(() => {
-    const getUserData = async () => {
+    const fetchUserData = async () => {
       try {
         console.log("Attempting to get user data...");
         
-        // Try to get from AsyncStorage first
-        const userData = await AsyncStorage.getItem("user");
+        // Try to get from TokenManager first
+        const userData = await getUserData();
+        
         if (userData) {
-          const parsedUser = JSON.parse(userData);
-          console.log("Full user data from AsyncStorage:", parsedUser);
+          console.log("Full user data from SecureStore:", userData);
           
           // Check what property contains the user ID
-          if (parsedUser._id) {
-            console.log("Using _id:", parsedUser._id);
-            setUserId(parsedUser._id);
-          } else if (parsedUser.id) {
-            console.log("Using id:", parsedUser.id);
-            setUserId(parsedUser.id);
+          if (userData._id) {
+            console.log("Using _id:", userData._id);
+            setUserId(userData._id);
+          } else if (userData.id) {
+            console.log("Using id:", userData.id);
+            setUserId(userData.id);
           } else {
-            console.log("No ID found in user data, structure:", Object.keys(parsedUser));
+            console.log("No ID found in user data, structure:", Object.keys(userData));
             // Log all properties to find where the ID might be
-            for (const key in parsedUser) {
-              console.log(`${key}:`, parsedUser[key]);
+            for (const key in userData) {
+              console.log(`${key}:`, userData[key]);
             }
           }
           return;
         }
         
-        console.log("No user in AsyncStorage, trying API...");
-        // If not in AsyncStorage, fetch from API
-        const token = await AsyncStorage.getItem("token");
+        console.log("No user in SecureStore, trying API...");
+        // If not in SecureStore, fetch from API
+        const token = await getToken();
         if (!token) {
           console.log("No token found, cannot fetch user");
           return;
         }
         
         const response = await axios.post(
-          "http://192.168.120.237:4000/api/auth/user",
+          "http://192.168.144.237:4000/api/auth/user",
           { token }
         );
         
         console.log("User data from API:", response.data.user._id);
         setUserId(response.data.user._id);
+        
+        // Store the fetched user data for future use
+        await storeUserData(response.data.user);
+        
       } catch (err) {
         console.error("Failed to get user data:", err);
       }
     };
     
-    getUserData();
+    fetchUserData();
   }, []);
 
   // Fetch reviews using Redux

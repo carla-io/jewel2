@@ -17,6 +17,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { createOrder, resetOrderStatus } from "../redux/slices/orderSlice";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { getUserData } from "../utils/TokenManager";
 
 export default function CheckoutScreen() {
   const { cart, getTotalPrice, clearCart } = useContext(CartContext);
@@ -30,10 +31,9 @@ export default function CheckoutScreen() {
   useEffect(() => {
     const fetchUserId = async () => {
       try {
-        const userData = await AsyncStorage.getItem("user");
+        const userData = await getUserData();
         if (userData) {
-          const parsedUser = JSON.parse(userData);
-          setUserId(parsedUser._id || parsedUser.id);
+          setUserId(userData._id || userData.id);
         }
       } catch (error) {
         console.error("Failed to fetch user data:", error);

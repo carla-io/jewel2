@@ -14,7 +14,6 @@ import {
   Alert,
   Platform
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUserOrders } from "../redux/slices/orderSlice";
 import { 
@@ -24,6 +23,8 @@ import {
 } from "../redux/slices/reviewSlice";
 import { RootState, AppDispatch } from "../redux/store";
 import { Ionicons } from "@expo/vector-icons";
+import { getUserData } from "../utils/TokenManager"; // Import getUserData from TokenManager
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Review Component
 const ReviewModal = ({ 
@@ -61,14 +62,13 @@ const ReviewModal = ({
     }
 
     try {
-      const userData = await AsyncStorage.getItem("user");
+      const user = await getUserData();
       
-      if (!userData) {
+      if (!user) {
         Alert.alert("Error", "You need to be logged in to leave a review");
         return;
       }
 
-      const user = JSON.parse(userData);
       const userId = user._id || user.id;
       const username = user.username || user.name || "Anonymous";
       
@@ -173,10 +173,9 @@ const OrdersScreen = () => {
   useEffect(() => {
     const fetchUserId = async () => {
       try {
-        const userData = await AsyncStorage.getItem("user");
+        const userData = await getUserData();
         if (userData) {
-          const parsedUser = JSON.parse(userData);
-          setUserId(parsedUser._id || parsedUser.id);
+          setUserId(userData._id || userData.id);
         } else {
           setUserId(null);
         }
@@ -185,7 +184,7 @@ const OrdersScreen = () => {
         setUserId(null);
       }
     };
-
+  
     fetchUserId();
   }, []);
 

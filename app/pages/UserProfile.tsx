@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -14,12 +15,12 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import Toast from "react-native-toast-message";
 import * as FileSystem from "expo-file-system";
+import { getToken, getUserData, clearAuthData } from '../utils/TokenManager';
 
 export default function UserProfile() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -35,14 +36,27 @@ export default function UserProfile() {
     const fetchUser = async () => {
       setLoading(true);
       try {
-        const token = await AsyncStorage.getItem("token");
+        // Get token from SecureStore instead of AsyncStorage
+        const token = await getToken();
+        
         if (!token) {
-          navigation.reset({ index: 0, routes: [{ name: "SignupScreen" }] });
+          router.push("/pages/SignUpScreen");
           return;
         }
 
+        // Alternative approach: get user data directly from SecureStore if available
+        const cachedUserData = await getUserData();
+        if (cachedUserData) {
+          // Use cached user data for immediate display
+          setUserName(cachedUserData.username);
+          setUserEmail(cachedUserData.email);
+          setProfileImage(cachedUserData.profilePicture?.url || null);
+          setUserId(cachedUserData._id);
+        }
+
+        // Still make the API call to ensure data is fresh
         const response = await axios.post(
-          "http://192.168.120.237:4000/api/auth/user",
+          "http://192.168.144.237:4000/api/auth/user",
           { token }
         );
 
@@ -127,7 +141,7 @@ export default function UserProfile() {
   };
 
   const handleUpdateProfile = async () => {
-    const token = await AsyncStorage.getItem("token");
+    const token = await getToken();
     if (!token) {
       Toast.show({
         type: "error",
@@ -166,7 +180,7 @@ export default function UserProfile() {
     try {
       setLoading(true);
       const response = await axios.put(
-        `http://192.168.120.237:4000/api/auth/update-profile/${userId}`,
+        `http://192.168.144.237:4000/api/auth/update-profile/${userId}`,
         formData,
         {
           headers: {
@@ -209,8 +223,7 @@ export default function UserProfile() {
         {
           text: "Logout",
           onPress: async () => {
-            await AsyncStorage.removeItem("user");
-            await AsyncStorage.removeItem("token");
+            await clearAuthData();
             router.push("/pages/SignUpScreen");
           },
           style: "destructive"
@@ -308,7 +321,7 @@ export default function UserProfile() {
         </View>
 
         <View style={styles.optionsSection}>
-          <TouchableOpacity style={styles.optionItem}>
+          {/* <TouchableOpacity style={styles.optionItem}>
             <View style={styles.optionIconContainer}>
               <Ionicons name="settings-outline" size={20} color="#FF92A5" />
             </View>
@@ -322,7 +335,7 @@ export default function UserProfile() {
             </View>
             <Text style={styles.optionText}>Help & Support</Text>
             <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <TouchableOpacity
             style={styles.logoutButton}

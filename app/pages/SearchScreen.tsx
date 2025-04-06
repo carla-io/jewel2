@@ -6,8 +6,10 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
 import axios from "axios";
+import { useNavigation } from "@react-navigation/native";
+import { router } from "expo-router";
 
-const API_URL = "http://192.168.120.237:4000/api/product/search";
+const API_URL = "http://192.168.144.237:4000/api/product/search";
 
 const categories = [
   { id: "All", icon: "apps-outline", label: "All" },
@@ -18,6 +20,7 @@ const categories = [
 ];
 
 const SearchScreen = () => {
+  const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [minPrice, setMinPrice] = useState(0);
@@ -50,6 +53,31 @@ const SearchScreen = () => {
       console.error("❌ Error fetching products:", error);
     }
     setLoading(false);
+  };
+
+  const handleProductPress = (product) => {
+    // Extract product ID
+    const productId = product._id;
+    
+    // Log the ID for debugging
+    console.log("🔍 Selected Product ID:", productId);
+    
+    // Simple router.push with string path and query parameter
+    router.push(`/pages/ProductDetails?productId=${productId}`);
+    
+    // Alternative syntaxes (uncomment the one that matches your router):
+    
+    // Expo Router object syntax
+    // router.push({
+    //   pathname: "/pages/ProductDetails",
+    //   params: { productId }
+    // });
+    
+    // Next.js
+    // router.push({
+    //   pathname: '/pages/ProductDetails',
+    //   query: { productId },
+    // });
   };
 
   useEffect(() => {
@@ -111,38 +139,42 @@ const SearchScreen = () => {
         <ActivityIndicator size="large" color="#f56a79" />
       ) : (
         <FlatList
-        data={products}
-        keyExtractor={(item) => item._id.toString()}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        ListEmptyComponent={<Text style={styles.emptyMessage}>No products found</Text>}
-        renderItem={({ item }) => {
-          // Extract URLs from images array
-          const validImages = item.images?.map((img) => img.url).filter(Boolean);
-      
-          return (
-            <View style={styles.productCard}>
-              {/* Product Image */}
-              <View style={styles.imageContainer}>
-                <Image
-                  source={{ uri: validImages?.length > 0 ? validImages[0] : "https://via.placeholder.com/150" }}
-                  style={styles.productImage}
-                  resizeMode="cover"
-                />
-              </View>
-      
-              {/* Product Info */}
-              <View style={styles.productInfo}>
-                <Text style={styles.productName} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Text style={styles.productCategory}>{item.category}</Text>
-                <Text style={styles.productPrice}>₱{Number(item.price).toLocaleString()}</Text>
-              </View>
-            </View>
-          );
-        }}
-      />      
+          data={products}
+          keyExtractor={(item) => item._id ? item._id.toString() : Math.random().toString()}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
+          ListEmptyComponent={<Text style={styles.emptyMessage}>No products found</Text>}
+          renderItem={({ item }) => {
+            // Extract URLs from images array
+            const validImages = item.images?.map((img) => img.url).filter(Boolean);
+        
+            return (
+              <TouchableOpacity 
+                style={styles.productCard}
+                onPress={() => handleProductPress(item)}
+                activeOpacity={0.7}
+              >
+                {/* Product Image */}
+                <View style={styles.imageContainer}>
+                  <Image
+                    source={{ uri: validImages?.length > 0 ? validImages[0] : "https://via.placeholder.com/150" }}
+                    style={styles.productImage}
+                    resizeMode="cover"
+                  />
+                </View>
+        
+                {/* Product Info */}
+                <View style={styles.productInfo}>
+                  <Text style={styles.productName} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={styles.productCategory}>{item.category}</Text>
+                  <Text style={styles.productPrice}>₱{Number(item.price).toLocaleString()}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+        />      
       )}
     </View>
   );

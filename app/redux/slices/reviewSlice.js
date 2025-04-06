@@ -1,13 +1,13 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getToken } from "../../utils/TokenManager"; // Import the getToken function
 
-const apiUrl = "http://192.168.120.237:4000";
+const apiUrl = "http://192.168.144.237:4000";
 
 // Fetch a single review
 export const fetchReview = createAsyncThunk("reviews/fetchReview", async ({ productId, userId }, { rejectWithValue }) => {
   try {
-    const token = await AsyncStorage.getItem("token");
+    const token = await getToken();
     if (!token) return rejectWithValue("No token found");
 
     const response = await axios.get(`${apiUrl}/api/reviews/getSingle/${productId}/${userId}`, {
@@ -33,7 +33,7 @@ export const fetchReviews = createAsyncThunk("reviews/fetchReviews", async (prod
 // Submit or update a review
 export const submitReview = createAsyncThunk("reviews/submitReview", async ({ reviewData, isEditing }, { rejectWithValue }) => {
   try {
-    const token = await AsyncStorage.getItem("token");
+    const token = await getToken();
     if (!token) return rejectWithValue("No token found");
 
     const endpoint = isEditing ? `${apiUrl}/api/reviews/update` : `${apiUrl}/api/reviews/add`;
@@ -55,7 +55,7 @@ export const submitReview = createAsyncThunk("reviews/submitReview", async ({ re
 // Check if a product has been reviewed by the user
 export const hasBeenReviewed = createAsyncThunk("reviews/hasBeenReviewed", async ({ productId, userId }, { rejectWithValue }) => {
   try {
-    const token = await AsyncStorage.getItem("token");
+    const token = await getToken();
     if (!token) return false;
 
     const response = await axios.get(`${apiUrl}/api/reviews/getSingle/${productId}/${userId}`, {

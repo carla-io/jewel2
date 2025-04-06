@@ -8,8 +8,9 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getToken, getUserData } from '../../utils/TokenManager';
 
-const API_URL = "http://192.168.120.237:4000/api";
+const API_URL = "http://192.168.144.237:4000/api";
 
 // Configure notification handler
 Notifications.setNotificationHandler({
@@ -64,71 +65,70 @@ const AdminOrdersScreen = () => {
     };
   }, [dispatch]);
 
-  const registerTokenWithServer = async (token: string) => {
+  const registerTokenWithServer = async (expoPushToken: string) => {
     try {
-      // Get auth token if available
-      const authToken = await AsyncStorage.getItem('token');
-      
-      // Get userId if available and ensure it's a string
+      // Get auth token securely
+      const authToken = await getToken();
+  
+      // Get userId securely from stored user data
       let userId;
       try {
-          userId = await AsyncStorage.getItem('userId');
-          console.log('Retrieved userId from AsyncStorage:', userId);
+        const userData = await getUserData();
+        userId = userData?._id || userData?.id;
+        console.log('Retrieved userId from SecureStore:', userId);
       } catch (err) {
-          console.log('Could not retrieve userId, continuing without it');
+        console.log('Could not retrieve userId, continuing without it');
       }
-      
+  
+      // Gather device information
       const deviceInfo = {
-          platform: Device.osName || 'unknown',
-          model: Device.modelName || 'unknown',
-          osVersion: Device.osVersion || 'unknown',
+        platform: Device.osName || 'unknown',
+        model: Device.modelName || 'unknown',
+        osVersion: Device.osVersion || 'unknown',
       };
-      
-      // Setup request data and config
-      const data = {
-          expoPushToken: token,
-          deviceInfo
+  
+      // Build request payload
+      const data: any = {
+        expoPushToken,
+        deviceInfo,
       };
-      
-      // Only add userId if it exists
+  
+      // Optionally add userId if present
       if (userId) {
-          // Ensure userId is a string with no whitespace
-          data.userId = userId.toString().trim();
-          console.log('Adding userId to registration request:', data.userId);
+        data.userId = userId.toString().trim();
+        console.log('Adding userId to registration request:', data.userId);
       }
-      
-      // Setup headers if auth token exists
-      const config = {};
+  
+      // Set up headers if token exists
+      const config: any = {};
       if (authToken) {
-          config.headers = {
-              'Authorization': `Bearer ${authToken}`
-          };
+        config.headers = {
+          'Authorization': `Bearer ${authToken}`,
+        };
       }
-      
+  
       console.log('Registering push token with data:', JSON.stringify(data));
-      
-      // Make the API call with proper error handling
+  
+      // Send the request
       const response = await axios.post(
-          `${API_URL}/notifications/register-token`,
-          data,
-          config
+        `${API_URL}/notifications/register-token`,
+        data,
+        config
       );
-      
+  
       console.log('Push token registered with server:', response.data);
       return response.data;
-  } catch (error) {
-      // Extract the most useful error information
+    } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message;
       console.error('Failed to register push token with server:', errorMessage);
-      
-      // Log detailed error for debugging
+  
       if (error.response) {
-          console.error('Error response data:', error.response.data);
-          console.error('Error response status:', error.response.status);
+        console.error('Error response data:', error.response.data);
+        console.error('Error response status:', error.response.status);
       }
-      
+  
       return { success: false, error: errorMessage };
-  }
+    }
   };
 
   const registerForPushNotificationsAsync = async () => {
@@ -164,34 +164,36 @@ const AdminOrdersScreen = () => {
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       setUpdatingOrderId(orderId);
-      
+  
       // Define valid statuses
       const validStatuses = ['Processing', 'Delivered', 'Cancelled'];
-      
-      // Check if button text matches valid status
-      let statusToSend = newStatus;
-      if (newStatus === "Canceled") {
-        statusToSend = "Cancelled";
-      }
-      
+  
+      // Normalize status if needed
+      let statusToSend = newStatus === "Canceled" ? "Cancelled" : newStatus;
+  
       if (!validStatuses.includes(statusToSend)) {
         throw new Error(`Invalid status value: ${statusToSend}`);
       }
-      
-      // Get admin ID from AsyncStorage
-      const adminId = await AsyncStorage.getItem('userId');
-      
-      // Send update including adminId for notifications
+  
+      // Securely get admin ID from stored user data
+      const userData = await getUserData();
+      const adminId = userData?._id || userData?.id;
+  
+      if (!adminId) {
+        throw new Error('Admin ID not found in secure storage.');
+      }
+  
+      // Send update request
       await axios.put(
-        `${API_URL}/order/${orderId}/status`, 
-        { 
+        `${API_URL}/order/${orderId}/status`,
+        {
           status: statusToSend,
-          adminId: adminId // Send admin ID for notifications back to admin
+          adminId, // Include admin ID for tracking
         }
       );
-      
+  
       dispatch(fetchOrders());
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update order status:", error.response?.data || error.message);
       alert(`Error updating order: ${error.response?.data?.message || error.message}`);
     } finally {
